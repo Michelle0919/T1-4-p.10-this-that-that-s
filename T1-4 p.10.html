@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>this, that, that's</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+  <style>
+    /* =========================================
+       純 CSS 設定 - 完美適配 1920x1080 左右分割佈局
+    ========================================= */
+    :root {
+      --primary: #0ea5e9;
+      --primary-hover: #0284c7;
+      --success: #10b981;
+      --danger: #e11d48;
+      --warning: #f59e0b;
+      --text-dark: #1e293b;
+      --bg-light: #f0f9ff;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; margin: 0; padding: 0;
+      font-family: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 26%),
+                  linear-gradient(135deg, #dff7ff 0%, #f8fbff 42%, #fff5d8 100%);
+      color: var(--text-dark);
+      overflow: hidden; /* 強制全螢幕不滾動 */
+    }
+
+    .hidden { display: none !important; }
+    button { cursor: pointer; font-family: inherit; transition: transform 0.1s ease; outline: none; }
+    button:active { transform: scale(0.96); }
+    button:disabled { cursor: not-allowed; opacity: 0.7; pointer-events: none; }
+
+    /* --- Setup Screen --- */
+    #setupScreen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .setup-card {
+      background: rgba(255, 255, 255, 0.95); border: 4px solid white; border-radius: 24px;
+      padding: 60px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; max-width: 1000px; width: 100%;
+    }
+    .setup-title { font-size: clamp(3rem, 6vw, 5rem); font-weight: 900; margin: 10px 0; }
+    .setup-input {
+      width: 100%; padding: 20px; font-size: 3rem; text-align: center;
+      border: 4px solid #bae6fd; border-radius: 16px; margin: 15px 0; font-weight: bold;
+    }
+    .btn-play-main {
+      width: 100%; background: var(--success); color: white; border: none;
+      border-radius: 20px; font-size: clamp(2.5rem, 5vw, 4rem); padding: 25px;
+      font-weight: 900; margin-top: 30px; box-shadow: 0 10px 20px rgba(16,185,129,0.3);
+    }
+
+    /* --- Game Layout (左右分割) --- */
+    .game-shell {
+      display: flex; flex-direction: row; height: 100vh; max-width: 1920px; margin: 0 auto; padding: 15px 25px; gap: 20px;
+    }
+
+    /* 左側主遊戲區 */
+    .game-main-col {
+      display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 20px; height: 100%;
+    }
+
+    /* 右側計分板 (改為白底、大幅縮小寬度) */
+    .scoreboard {
+      width: clamp(220px, 18vw, 300px); /* 從原本的 480px 縮小到 300px 以下 */
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--text-dark);
+      border-radius: 24px; 
+      padding: 20px; 
+      border: 4px solid white; 
+      flex-shrink: 0;
+      display: flex; flex-direction: column; height: 100%; 
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+
+    /* --- Header & Stats --- */
+    .top-bar {
+      background: rgba(255,255,255,0.9); border-radius: 20px; padding: 15px 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      display: flex; flex-direction: column; gap: 15px; flex-shrink: 0;
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+    .title-area { display: flex; align-items: center; gap: 20px; }
+    .title-icon { width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; }
+    .btn-group { display: flex; gap: 15px; }
+    .btn-sm { border: none; border-radius: 16px; padding: 15px 25px; font-size: 1.5rem; font-weight: bold; color: white; }
+    .btn-blue { background: var(--primary); }
+    .btn-orange { background: var(--warning); color: #fff; }
+    .btn-red { background: var(--danger); }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+    .stat-box { background: #e0f2fe; padding: 15px; border-radius: 16px; text-align: center; border: 2px solid #bae6fd; }
+    .stat-label { font-size: 1rem; color: #0284c7; font-weight: bold; text-transform: uppercase; }
+    .stat-value { font-size: 2.2rem; font-weight: 900; }
+
+    /* --- Main Play Area --- */
+    .main-area { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 20px; min-height: 0; justify-content: center; }
+    
+    .timer-row { display: flex; align-items: center; width: 100%; max-width: 1400px; gap: 25px; }
+    .timer-circle {
+      width: 90px; height: 90px; border-radius: 50%; background: conic-gradient(#22c55e var(--timerDeg), #e5e7eb 0deg);
+      display: flex; align-items: center; justify-content: center; padding: 10px; flex-shrink: 0;
+    }
+    .timer-inner { width: 100%; height: 100%; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: bold; }
+    .feedback-text { flex: 1; text-align: center; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 900; }
+
+    /* --- Question Card & Canvas --- */
+    .question-card {
+      width: 100%; background: linear-gradient(to bottom right, #f0f9ff, #fffbeb);
+      border: 4px solid white; border-radius: 32px; padding: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      display: flex; flex-direction: row; align-items: center; justify-content: space-around; gap: 20px; flex: 1; min-height: 0;
+    }
+    .sentence-text {
+      font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 900; line-height: 1.4; text-align: center;
+      word-wrap: break-word; white-space: normal; flex: 1;
+    }
+    .blank {
+      display: inline-block; min-width: 3.5em; border-bottom: 8px solid var(--text-dark);
+      margin: 0 15px; text-align: center; color: var(--success);
+    }
+    .canvas-container {
+      flex-shrink: 0; display: flex; justify-content: center; align-items: center; max-width: 550px;
+    }
+    canvas { max-width: 100%; height: auto; border-radius: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); }
+
+    /* --- Choices --- */
+    .choices-grid { display: flex; gap: 25px; width: 100%; justify-content: center; flex-shrink: 0; }
+    .btn-choice {
+      flex: 1; min-width: 200px; max-width: 350px; padding: 25px; font-size: clamp(2.5rem, 4vw, 3.5rem);
+      font-weight: 900; color: white; border: 4px solid white; border-radius: 24px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .bg-cyan { background: #22d3ee; } .bg-indigo { background: #818cf8; } .bg-fuchsia { background: #e879f9; }
+    .correct-ring { box-shadow: 0 0 0 10px #86efac; }
+    .wrong-ring { box-shadow: 0 0 0 10px #fda4af; }
+    .btn-skip { background: #475569; color: white; border: none; border-radius: 16px; padding: 15px 50px; font-size: 1.8rem; font-weight: bold; margin-top: 5px; flex-shrink: 0; }
+
+    /* --- Right Sidebar Scoreboard Internals --- */
+    .score-top { display: flex; justify-content: space-between; font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; flex-shrink: 0; color: #0f172a; }
+    .progress-bar { width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 15px; flex-shrink: 0; }
+    .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s ease; }
+    
+    /* 隊伍容器：緊湊的排版設計 */
+    .teams-container {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; 
+      align-content: start; flex: 1; overflow-y: auto; padding-right: 5px;
+    }
+    .teams-container::-webkit-scrollbar { width: 6px; }
+    .teams-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .team-chip { 
+      background: #f0f9ff; border: 2px solid #bae6fd; padding: 12px; 
+      border-radius: 16px; text-align: center; display: flex; flex-direction: column; justify-content: center; 
+      transition: all 0.2s;
+    }
+    .team-active { 
+      background: #bae6fd; border-color: #38bdf8; color: #0f172a; 
+      box-shadow: 0 0 15px rgba(14,165,233,0.3); transform: scale(1.03); 
+    }
+    .team-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #475569; }
+    .team-active .team-name { color: #0f172a; }
+    .team-score { font-size: 2rem; font-weight: 900; line-height: 1; }
+
+    /* --- Review Area --- */
+    .review-area { background: white; border-radius: 24px; padding: 30px; border: 4px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .review-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .review-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; flex: 1; align-content: start; overflow-y: auto; padding-right: 10px; }
+    .review-item {
+      background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 16px; padding: 20px; text-align: left;
+      font-size: 1.8rem; font-weight: bold; display: flex; gap: 15px; align-items: center;
+      word-wrap: break-word; white-space: normal; cursor: pointer; transition: background 0.2s;
+    }
+    .review-item:hover { background: #e0f2fe; }
+    .highlight-word { color: #e11d48; text-decoration: underline; text-decoration-color: #fbbf24; text-decoration-thickness: 5px; }
+  </style>
+</head>
+
+<body>
+  <section id="setupScreen">
+    <div class="setup-card animate__animated animate__fadeIn">
+      <div style="font-size: 5rem; background: var(--primary); color: white; width: 120px; height: 120px; border-radius: 32px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-weight: bold;">T</div>
+      <h1 class="setup-title">this, that, that's</h1>
+      <p style="font-size: 2.5rem; color: #64748b; font-weight: bold;">Team Game</p>
+      
+      <div style="margin-top: 40px; background: #f0f9ff; padding: 30px; border-radius: 24px;">
+        <label for="teamCountInput" style="font-size: 2.2rem; font-weight: bold;">Teams</label>
+        <input id="teamCountInput" type="number" min="1" max="26" value="3" class="setup-input" />
+        <p id="teamPreview" style="color: var(--primary-hover); font-size: 1.5rem; font-weight: bold;">Team A, Team B, Team C</p>
+      </div>
+
+      <button id="playBtn" class="btn-play-main">Play</button>
+    </div>
+  </section>
+
+  <div id="gameScreen" class="game-shell hidden">
+    
+    <div class="game-main-col">
+      <header class="top-bar">
+        <div class="header-top">
+          <div class="title-area">
+            <div class="title-icon">T</div>
+            <div>
+              <h1 style="font-size: 2.5rem; margin:0; font-weight: 900;">this, that, that's</h1>
+              <p id="currentTeamBox" style="margin:0; color: #64748b; font-weight: bold; font-size: 1.2rem;">Team A Turn</p>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button id="listenBtn" class="btn-sm btn-blue">Listen</button>
+            <button id="pauseBtn" class="btn-sm btn-orange">Pause</button>
+            <button id="restartBtn" class="btn-sm btn-red">Restart</button>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-label">Level</div><div id="levelBox" class="stat-value">1</div></div>
+          <div class="stat-box"><div class="stat-label">Round</div><div id="roundBox" class="stat-value">1 / 20</div></div>
+          <div class="stat-box"><div class="stat-label">Team Score</div><div id="teamScoreBox" class="stat-value">0</div></div>
+          <div class="stat-box"><div class="stat-label">Time</div><div id="timeBox" class="stat-value">20</div></div>
+        </div>
+      </header>
+
+      <main id="mainArea" class="main-area">
+        <section id="playArea" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px; flex: 1;">
+          <div class="timer-row">
+            <div id="timerRing" class="timer-circle" style="--timerDeg: 360deg;">
+              <div class="timer-inner"><span id="smallTimeBox">20</span></div>
+            </div>
+            <div id="feedbackBox" class="feedback-text">Play</div>
+          </div>
+
+          <div class="question-card">
+            <div id="sentenceText" class="sentence-text">Is <span class="blank"></span> a nose?</div>
+            <div class="canvas-container">
+              <canvas id="sceneCanvas"></canvas>
+            </div>
+          </div>
+
+          <div class="choices-grid">
+            <button data-choice="this" class="btn-choice bg-cyan">this</button>
+            <button data-choice="that" class="btn-choice bg-indigo">that</button>
+            <button data-choice="that's" class="btn-choice bg-fuchsia">that's</button>
+          </div>
+
+          <button id="skipBtn" class="btn-skip">Skip</button>
+        </section>
+
+        <section id="reviewArea" class="review-area hidden">
+          <div class="review-header">
+            <div>
+              <h2 style="font-size: 3.5rem; margin:0; font-weight:900;">Answer Review</h2>
+              <p style="color:#64748b; font-weight:bold; margin-top:5px; font-size: 1.5rem;">Click to listen.</p>
+            </div>
+            <div class="btn-group">
+              <button id="prevReviewBtn" class="btn-sm btn-blue">Page 1</button>
+              <button id="nextReviewBtn" class="btn-sm btn-blue">Next Page</button>
+              <button id="playAgainBtn" class="btn-sm btn-orange">Restart</button>
+            </div>
+          </div>
+          <div id="winnerBox" style="background: #fef3c7; padding: 15px; border-radius: 16px; font-size: 2.2rem; font-weight: 900; margin-bottom: 15px; color:#b45309; flex-shrink: 0;">Winner: Team A</div>
+          <div id="reviewList" class="review-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="scoreboard">
+      <div class="score-top">
+        <span>Scoreboard</span>
+        <span id="progressText" style="color: var(--primary);">0 / 20</span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div id="teamScoreList" class="teams-container"></div>
+    </aside>
+
+  </div>
+
+  <script>
+    const TOTAL_QUESTIONS = 20;
+    const TEAM_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+    const questions = [
+      { sentence: '___ a head.', answer: "that's", speak: "That's a head.", item: 'head', distance: 'far' },
+      { sentence: '___ an arm.', answer: "that's", speak: "That's an arm.", item: 'arm', distance: 'far' },
+      { sentence: 'Is ___ a nose?', answer: 'that', speak: 'Is that a nose?', item: 'nose', distance: 'far' },
+      { sentence: '___ is an eye.', answer: 'this', speak: 'This is an eye.', item: 'eye', distance: 'near' },
+      { sentence: 'Is ___ a mouth?', answer: 'this', speak: 'Is this a mouth?', item: 'mouth', distance: 'near' },
+      
+      { sentence: 'Is ___ my notebook?', answer: 'this', speak: 'Is this my notebook?', item: 'notebook', distance: 'near' },
+      { sentence: 'Yes, and ___ your pencil, too.', answer: "that's", speak: "Yes, and that's your pencil, too.", item: 'pencil', distance: 'far' },
+      { sentence: '___ is my ruler.', answer: 'this', speak: 'This is my ruler.', item: 'ruler', distance: 'near' },
+      { sentence: '___ one is yours.', answer: 'that', speak: 'That one is yours.', item: 'ruler', distance: 'far' },
+      { sentence: 'Oh, ___ is my paper.', answer: 'this', speak: 'Oh, this is my paper.', item: 'paper', distance: 'near' },
+      { sentence: 'And ___ is my glue.', answer: 'this', speak: 'And this is my glue.', item: 'glue', distance: 'near' },
+      { sentence: 'Is ___ glue yours?', answer: 'this', speak: 'Is this glue yours?', item: 'glue', distance: 'near' },
+      { sentence: "No, ___ Jamie's glue.", answer: "that's", speak: "No, that's Jamie's glue.", item: 'glue', distance: 'far' },
+      { sentence: '___ is my pencil.', answer: 'this', speak: 'This is my pencil.', item: 'pencil', distance: 'near' },
+      { sentence: 'Is ___ your paper?', answer: 'that', speak: 'Is that your paper?', item: 'paper', distance: 'far' },
+      { sentence: "No, ___ Amy's paper.", answer: "that's", speak: "No, that's Amy's paper.", item: 'paper', distance: 'far' },
+      { sentence: '___ is your notebook.', answer: 'this', speak: 'This is your notebook.', item: 'notebook', distance: 'near' },
+      { sentence: 'Is ___ your ruler?', answer: 'that', speak: 'Is that your ruler?', item: 'ruler', distance: 'far' },
+      { sentence: "Yes, ___ my ruler.", answer: "that's", speak: "Yes, that's my ruler.", item: 'ruler', distance: 'far' },
+      { sentence: 'And ___ is my pencil.', answer: 'this', speak: 'And this is my pencil.', item: 'pencil', distance: 'near' }
+    ];
+
+    let state = {
+      index: 0, teams: [], currentTeamIndex: 0, timeLeft: 20, maxTime: 20,
+      timer: null, paused: false, locked: false, gameOver: false, reviewPage: 0
+    };
+
+    const setupScreen = document.getElementById('setupScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const playArea = document.getElementById('playArea');
+    const reviewArea = document.getElementById('reviewArea');
+    const sentenceText = document.getElementById('sentenceText');
+    const feedbackBox = document.getElementById('feedbackBox');
+    const timerRing = document.getElementById('timerRing');
+
+    document.getElementById('teamCountInput').addEventListener('input', (e) => {
+      let val = parseInt(e.target.value) || 1;
+      if (val < 1) val = 1; if (val > 26) val = 26;
+      e.target.value = val;
+      const names = Array.from({length: val}, (_, i) => 'Team ' + TEAM_LETTERS[i]);
+      document.getElementById('teamPreview').textContent = names.join(', ');
+    });
+
+    document.getElementById('playBtn').addEventListener('click', () => {
+      const val = parseInt(document.getElementById('teamCountInput').value) || 1;
+      state.teams = Array.from({length: val}, (_, i) => ({ name: 'Team ' + TEAM_LETTERS[i], score: 0 }));
+      setupScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      restartGame();
+    });
+
+    function getCorrectCaseAnswer(sentence, rawAnswer) {
+      let ans = String(rawAnswer).toLowerCase();
+      if (sentence.trim().startsWith('___')) {
+        ans = ans.charAt(0).toUpperCase() + ans.slice(1);
+      }
+      return ans;
+    }
+
+    function speak(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US'; utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function drawSceneCanvas(item, distance) {
+      const canvas = document.getElementById('sceneCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      
+      const isNear = distance === 'near';
+      canvas.width = isNear ? 500 : 800; 
+      canvas.height = 250;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(5, 5, canvas.width - 10, canvas.height - 10, 24);
+      ctx.fill();
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#bae6fd';
+      ctx.stroke();
+
+      ctx.font = "80px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("🧑‍🎓", 80, canvas.height / 2);
+
+      ctx.beginPath();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = isNear ? '#38bdf8' : '#0284c7';
+      ctx.lineCap = "round";
+      
+      const startX = 150;
+      const endX = isNear ? 300 : 600;
+      const y = canvas.height / 2;
+
+      if (!isNear) ctx.setLineDash([15, 20]);
+      else ctx.setLineDash([]);
+      
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = "bold 28px Arial Rounded MT Bold, Arial";
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fillText(distance.toUpperCase(), (startX + endX) / 2, y - 25);
+
+      const emojis = {
+        'head': '👤', 'arm': '💪', 'nose': '👃', 'eye': '👁️', 'mouth': '👄',
+        'notebook': '📓', 'pencil': '✏️', 'ruler': '📏', 'paper': '📄', 'glue': '🧴'
+      };
+      
+      ctx.font = "100px Arial";
+      ctx.fillText(emojis[item] || '❓', endX + 80, y);
+    }
+
+    function updateUI() {
+      document.getElementById('levelBox').textContent = state.index < 5 ? 1 : (state.index < 12 ? 2 : 3);
+      document.getElementById('roundBox').textContent = `${state.index + 1} / ${TOTAL_QUESTIONS}`;
+      document.getElementById('timeBox').textContent = state.timeLeft;
+      document.getElementById('smallTimeBox').textContent = state.timeLeft;
+      
+      document.getElementById('progressText').textContent = `${state.index} / ${TOTAL_QUESTIONS}`;
+      document.getElementById('progressFill').style.width = `${(state.index / TOTAL_QUESTIONS) * 100}%`;
+      
+      const ct = state.teams[state.currentTeamIndex];
+      document.getElementById('currentTeamBox').textContent = `${ct.name} Turn`;
+      document.getElementById('teamScoreBox').textContent = ct.score;
+
+      let deg = Math.max(0, (state.timeLeft / state.maxTime) * 360);
+      timerRing.style.setProperty('--timerDeg', `${deg}deg`);
+
+      document.getElementById('teamScoreList').innerHTML = state.teams.map((t, i) => `
+        <div class="team-chip ${i === state.currentTeamIndex && !state.gameOver ? 'team-active' : ''}">
+          <div class="team-name">${t.name}</div>
+          <div class="team-score">${t.score}</div>
+        </div>
+      `).join('');
+    }
+
+    function loadQuestion() {
+      if (state.index >= TOTAL_QUESTIONS) { endGame(); return; }
+      state.locked = false; state.paused = false;
+      const q = questions[state.index];
+      state.maxTime = state.index < 5 ? 20 : (state.index < 12 ? 15 : 10);
+      state.timeLeft = state.maxTime;
+
+      sentenceText.innerHTML = q.sentence.replace('___', '<span class="blank"></span>');
+      drawSceneCanvas(q.item, q.distance); 
+      
+      feedbackBox.textContent = 'Play';
+      feedbackBox.style.color = '#1e293b';
+
+      document.querySelectorAll('.btn-choice').forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('correct-ring', 'wrong-ring');
+      });
+
+      updateUI();
+      clearInterval(state.timer);
+      state.timer = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      if (state.paused || state.locked || state.gameOver) return;
+      state.timeLeft--;
+      if (state.timeLeft <= 0) {
+        state.timeLeft = 0; handleTimeOut();
+      }
+      updateUI();
+    }
+
+    function handleTimeOut() {
+      state.locked = true; clearInterval(state.timer);
+      state.teams[state.currentTeamIndex].score += 1;
+      feedbackBox.textContent = 'Time Up +1'; feedbackBox.style.color = 'var(--danger)';
+      disableButtons();
+      speak(questions[state.index].speak); 
+      setTimeout(nextTurn, 2200);
+    }
+
+    function handleChoice(chosenRaw, btn) {
+      if (state.locked || state.paused || state.gameOver) return;
+      state.locked = true; clearInterval(state.timer);
+      const q = questions[state.index];
+      
+      const correctAns = q.answer.toLowerCase();
+      const chosen = chosenRaw.toLowerCase();
+      const isCorrect = chosen === correctAns;
+
+      const displayWord = getCorrectCaseAnswer(q.sentence, q.answer);
+      sentenceText.innerHTML = q.sentence.replace('___', `<span class="blank">${displayWord}</span>`);
+
+      disableButtons();
+
+      if (isCorrect) {
+        state.teams[state.currentTeamIndex].score += 5;
+        btn.classList.add('correct-ring');
+        feedbackBox.textContent = 'Right +5'; feedbackBox.style.color = 'var(--success)';
+        speak(q.speak); 
+      } else {
+        state.teams[state.currentTeamIndex].score += 1;
+        btn.classList.add('wrong-ring');
+        feedbackBox.textContent = 'Oops +1'; feedbackBox.style.color = 'var(--danger)';
+        speak(q.speak); 
+      }
+      updateUI();
+      setTimeout(nextTurn, 2200);
+    }
+
+    function disableButtons() {
+      document.querySelectorAll('.btn-choice').forEach(b => b.disabled = true);
+    }
+
+    function nextTurn() {
+      state.index++;
+      state.currentTeamIndex = (state.currentTeamIndex + 1) % state.teams.length;
+      loadQuestion();
+    }
+
+    function endGame() {
+      state.gameOver = true; clearInterval(state.timer);
+      playArea.classList.add('hidden'); reviewArea.classList.remove('hidden');
+      const maxScore = Math.max(...state.teams.map(t => t.score));
+      const winners = state.teams.filter(t => t.score === maxScore).map(t => t.name);
+      document.getElementById('winnerBox').textContent = `Winner: ${winners.join(' & ')} (${maxScore} pts)`;
+      updateUI();
+      state.reviewPage = 0; renderReviewPage();
+    }
+
+    function renderReviewPage() {
+      const itemsPerPage = 10;
+      const startIndex = state.reviewPage * itemsPerPage;
+      const pageQs = questions.slice(startIndex, startIndex + itemsPerPage);
+      
+      document.getElementById('reviewList').innerHTML = pageQs.map((q, i) => {
+        const correctText = getCorrectCaseAnswer(q.sentence, q.answer);
+        const regex = new RegExp(`\\b${correctText}\\b`, "i");
+        const highlighted = q.speak.replace(regex, match => `<span class="highlight-word">${match}</span>`);
+        
+        return `<div class="review-item" onclick="speak('${q.speak.replace(/'/g, "\\'")}')">
+          <span style="color:var(--primary); width: 80px;">R${startIndex + i + 1}</span>
+          <span>${highlighted}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function restartGame() {
+      clearInterval(state.timer); state.index = 0; state.currentTeamIndex = 0;
+      state.teams.forEach(t => t.score = 0); state.gameOver = false;
+      playArea.classList.remove('hidden'); reviewArea.classList.add('hidden');
+      loadQuestion();
+    }
+
+    document.querySelectorAll('.btn-choice').forEach(btn => {
+      btn.addEventListener('click', () => handleChoice(btn.getAttribute('data-choice'), btn));
+    });
+    document.getElementById('pauseBtn').addEventListener('click', () => {
+      if(state.locked || state.gameOver) return;
+      state.paused = !state.paused;
+      document.getElementById('pauseBtn').textContent = state.paused ? 'Resume' : 'Pause';
+      feedbackBox.textContent = state.paused ? 'Paused' : 'Play';
+    });
+    document.getElementById('skipBtn').addEventListener('click', () => {
+      if (state.locked || state.gameOver) return;
+      state.locked = true; clearInterval(state.timer); setTimeout(nextTurn, 800);
+    });
+    document.getElementById('listenBtn').addEventListener('click', () => { if(!state.locked) speak('Choose the best word.'); });
+    document.getElementById('restartBtn').addEventListener('click', restartGame);
+    document.getElementById('playAgainBtn').addEventListener('click', () => {
+      setupScreen.classList.remove('hidden'); gameScreen.classList.add('hidden');
+    });
+    document.getElementById('prevReviewBtn').addEventListener('click', () => { state.reviewPage = 0; renderReviewPage(); });
+    document.getElementById('nextReviewBtn').addEventListener('click', () => { state.reviewPage = 1; renderReviewPage(); });
+
+  </script>
+</body>
+</html>
